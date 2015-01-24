@@ -2239,14 +2239,27 @@ Licensed under the MIT license.
 
         function drawSeriesLines(series) {
             function plotLine(datapoints, xoffset, yoffset, axisx, axisy) {
-                var points = datapoints.points,
+              var singularLineSize = 1;
+              var onepx = axisx.c2p(singularLineSize) - axisx.c2p(0);
+              var points = datapoints.points,
                     ps = datapoints.pointsize,
                     prevx = null, prevy = null;
 
                 ctx.beginPath();
                 for (var i = ps; i < points.length; i += ps) {
-                    var x1 = points[i - ps], y1 = points[i - ps + 1],
+                    var x0 = points[i - ps - ps],
+                        x1 = points[i - ps], y1 = points[i - ps + 1],
                         x2 = points[i], y2 = points[i + 1];
+
+                    // draw a small line if we get a line segment with only a single point
+                    if ((x0 == null || x0 === undefined) && x1 != null && x2 == null) {
+                      x2 = x1 + onepx;
+                      y2 = y1;
+                    } else if (i == points.length - ps && x1 == null && x2 != null) {
+                      // is the last point following a null?
+                      x1 = x2 - onepx;
+                      y1 = y2;
+                    }
 
                     if (x1 == null || x2 == null)
                         continue;
@@ -3074,6 +3087,7 @@ Licensed under the MIT license.
                 return;
 
             var pointRadius = series.points.radius + series.points.lineWidth / 2;
+            var fillStyle = getFillStyle(series.points, series.color);
             octx.lineWidth = pointRadius;
             octx.strokeStyle = highlightColor;
             var radius = 1.5 * pointRadius;
@@ -3086,6 +3100,10 @@ Licensed under the MIT license.
             else
                 series.points.symbol(octx, x, y, radius, false);
             octx.closePath();
+            if (fillStyle) {
+              octx.fillStyle = fillStyle;
+              octx.fill();
+            }
             octx.stroke();
         }
 
