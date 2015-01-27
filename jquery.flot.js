@@ -1946,82 +1946,6 @@ Licensed under the MIT license.
             ctx.save();
             ctx.translate(plotOffset.left, plotOffset.top);
 
-            // draw markings
-            var markings = options.grid.markings;
-            if (markings) {
-                if ($.isFunction(markings)) {
-                    axes = plot.getAxes();
-                    // xmin etc. is backwards compatibility, to be
-                    // removed in the future
-                    axes.xmin = axes.xaxis.min;
-                    axes.xmax = axes.xaxis.max;
-                    axes.ymin = axes.yaxis.min;
-                    axes.ymax = axes.yaxis.max;
-
-                    markings = markings(axes);
-                }
-
-                for (i = 0; i < markings.length; ++i) {
-                    var m = markings[i],
-                        xrange = extractRange(m, "x"),
-                        yrange = extractRange(m, "y");
-
-                    // fill in missing
-                    if (xrange.from == null)
-                        xrange.from = xrange.axis.min;
-                    if (xrange.to == null)
-                        xrange.to = xrange.axis.max;
-                    if (yrange.from == null)
-                        yrange.from = yrange.axis.min;
-                    if (yrange.to == null)
-                        yrange.to = yrange.axis.max;
-
-                    // clip
-                    if (xrange.to < xrange.axis.min || xrange.from > xrange.axis.max ||
-                        yrange.to < yrange.axis.min || yrange.from > yrange.axis.max)
-                        continue;
-
-                    xrange.from = Math.max(xrange.from, xrange.axis.min);
-                    xrange.to = Math.min(xrange.to, xrange.axis.max);
-                    yrange.from = Math.max(yrange.from, yrange.axis.min);
-                    yrange.to = Math.min(yrange.to, yrange.axis.max);
-
-                    var xequal = xrange.from === xrange.to,
-                        yequal = yrange.from === yrange.to;
-
-                    if (xequal && yequal) {
-                        continue;
-                    }
-
-                    // then draw
-                    xrange.from = Math.floor(xrange.axis.p2c(xrange.from));
-                    xrange.to = Math.floor(xrange.axis.p2c(xrange.to));
-                    yrange.from = Math.floor(yrange.axis.p2c(yrange.from));
-                    yrange.to = Math.floor(yrange.axis.p2c(yrange.to));
-
-                    if (xequal || yequal) {
-                        var lineWidth = m.lineWidth || options.grid.markingsLineWidth,
-                            subPixel = lineWidth % 2 ? 0.5 : 0;
-                        ctx.beginPath();
-                        ctx.strokeStyle = m.color || options.grid.markingsColor;
-                        ctx.lineWidth = lineWidth;
-                        if (xequal) {
-                            ctx.moveTo(xrange.to + subPixel, yrange.from);
-                            ctx.lineTo(xrange.to + subPixel, yrange.to);
-                        } else {
-                            ctx.moveTo(xrange.from, yrange.to + subPixel);
-                            ctx.lineTo(xrange.to, yrange.to + subPixel);                            
-                        }
-                        ctx.stroke();
-                    } else {
-                        ctx.fillStyle = m.color || options.grid.markingsColor;
-                        ctx.fillRect(xrange.from, yrange.to,
-                                     xrange.to - xrange.from,
-                                     yrange.from - yrange.to);
-                    }
-                }
-            }
-
             // draw the ticks
             axes = allAxes();
             bw = options.grid.borderWidth;
@@ -2119,6 +2043,81 @@ Licensed under the MIT license.
                 ctx.stroke();
             }
 
+            // draw markings
+            var markings = options.grid.markings;
+            if (markings) {
+                if ($.isFunction(markings)) {
+                    axes = plot.getAxes();
+                    // xmin etc. is backwards compatibility, to be
+                    // removed in the future
+                    axes.xmin = axes.xaxis.min;
+                    axes.xmax = axes.xaxis.max;
+                    axes.ymin = axes.yaxis.min;
+                    axes.ymax = axes.yaxis.max;
+
+                    markings = markings(axes);
+                }
+
+                for (i = 0; i < markings.length; ++i) {
+                    var m = markings[i],
+                        xrange = extractRange(m, "x"),
+                        yrange = extractRange(m, "y");
+
+                    // fill in missing
+                    if (xrange.from == null)
+                        xrange.from = xrange.axis.min;
+                    if (xrange.to == null)
+                        xrange.to = xrange.axis.max;
+                    if (yrange.from == null)
+                        yrange.from = yrange.axis.min;
+                    if (yrange.to == null)
+                        yrange.to = yrange.axis.max;
+
+                    // clip
+                    if (xrange.to < xrange.axis.min || xrange.from > xrange.axis.max ||
+                        yrange.to < yrange.axis.min || yrange.from > yrange.axis.max)
+                        continue;
+
+                    xrange.from = Math.max(xrange.from, xrange.axis.min);
+                    xrange.to = Math.min(xrange.to, xrange.axis.max);
+                    yrange.from = Math.max(yrange.from, yrange.axis.min);
+                    yrange.to = Math.min(yrange.to, yrange.axis.max);
+
+                    var xequal = xrange.from === xrange.to,
+                        yequal = yrange.from === yrange.to;
+
+                    if (xequal && yequal) {
+                        continue;
+                    }
+
+                    // then draw
+                    xrange.from = Math.floor(xrange.axis.p2c(xrange.from));
+                    xrange.to = Math.floor(xrange.axis.p2c(xrange.to));
+                    yrange.from = Math.floor(yrange.axis.p2c(yrange.from));
+                    yrange.to = Math.floor(yrange.axis.p2c(yrange.to));
+
+                    if (xequal || yequal) {
+                        var lineWidth = m.lineWidth || options.grid.markingsLineWidth,
+                            subPixel = lineWidth % 2 ? 0.5 : 0;
+                        ctx.beginPath();
+                        ctx.strokeStyle = m.color || options.grid.markingsColor;
+                        ctx.lineWidth = lineWidth;
+                        if (xequal) {
+                            ctx.moveTo(xrange.to + subPixel, yrange.from);
+                            ctx.lineTo(xrange.to + subPixel, yrange.to);
+                        } else {
+                            ctx.moveTo(xrange.from, yrange.to + subPixel);
+                            ctx.lineTo(xrange.to, yrange.to + subPixel);
+                        }
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = m.color || options.grid.markingsColor;
+                        ctx.fillRect(xrange.from, yrange.to,
+                            xrange.to - xrange.from,
+                            yrange.from - yrange.to);
+                    }
+                }
+            }
 
             // draw border
             if (bw) {
