@@ -2864,6 +2864,42 @@ Licensed under the MIT license.
                 if (axisy.options.inverseTransform)
                     maxy = Number.MAX_VALUE;
 
+                // match a fill
+                // only highlight a filled area if we haven't found a point already
+                if (!foundPoint && s.lines.fill) {
+                    // assume datapoint x values are ever increasing
+                    // get the closest x value
+                    // NOTE(jeremy): This currently uses a bounding box consisting of largest and
+                    // smallest x and y values
+                    for (j = 0; j < points.length; j += ps) {
+                        var x = points[j];
+                        if (x == null) {
+                            continue;
+                        }
+                        var x1 = points[j + ps];
+                        if (mx >= x && mx <= x1) {
+                            var yHigh = points[j + 1];
+                            var yHigh1 = points[j + ps + 1];
+                            var yLow = points[j + 2];
+                            var yLow1 = points[j + ps + 2];
+                            var yMax = Math.max(yHigh, yHigh1, yLow, yLow1);
+                            var yMin = Math.min(yHigh, yHigh1, yLow, yLow1);
+                            if (my >= yMin && my <= yMax) {
+                                // TODO(jeremy): perform more accurate bounding box check here
+                                // have a match, pick the closest point between the left and right
+                                dx = Math.abs(axisx.p2c(x) - mouseX);
+                                var dx1 = Math.abs(axisx.p2c(x1) - mouseX);
+                                if (dx < dx1) {
+                                    item = [i, j / ps];
+                                } else {
+                                    item = [i, (j / ps) + 1];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // match a point
                 if (s.lines.show || s.points.show) {
                     for (j = 0; j < points.length; j += ps) {
                         var x = points[j], y = points[j + 1];
@@ -2885,12 +2921,15 @@ Licensed under the MIT license.
                         // use <= to ensure last point takes precedence
                         // (last generally means on top of)
                         if (dist < smallestDistance) {
+                            // mark that we have selected a point
+                            foundPoint = true;
                             smallestDistance = dist;
                             item = [i, j / ps];
                         }
                     }
                 }
 
+                // match a bar
                 if (s.bars.show && !item) { // no other point can be nearby
 
                     var barLeft, barRight;

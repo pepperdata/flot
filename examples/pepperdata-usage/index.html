@@ -7,13 +7,17 @@
   <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="../../excanvas.min.js"></script><![endif]-->
   <script src="../../jquery.js"></script>
   <script src="../../jquery.flot.js"></script>
+  <script src="../../jquery.flot.stack.js"></script>
   <script >
-
   $(function() {
 
     var d1 = [];
     for (var i = 0; i < 14; i += 0.5) {
-      d1.push([i, Math.sin(i)]);
+      d1.push([i, Math.sin(i) * 5 + 1]);
+    }
+    var d1stack = [];
+    for (var i = 0; i < 14; i += 0.5) {
+        d1stack.push([i, 5]);
     }
 
     var d2 = [[0, 3], [4, 8], [8, 5], [9, 13]];
@@ -22,10 +26,23 @@
 
     var d3 = [[0, 12], [7, 12], null, [8, 2.5], null, [9, 10], [10, 2.5], null, [12, 3]];
 
-    $.plot("#placeholder", [
-      d1,
-      d2,
-      d3 ], {
+    var plot = $.plot("#placeholder", [
+        {
+            data: d1,
+            stack: true,
+            lines: { fill: true}
+        },
+        {
+            data: d1stack,
+            stack: true,
+            lines: { fill: true}
+        },
+        {
+            data: d2,
+            lines: { fill: true}
+        },
+        d3
+      ], {
       grid: {
         hoverable: true,
         clickable: true,
@@ -38,10 +55,18 @@
         },
         points: {
           show: true,
-          radius: 5,
+          radius: 1,
           fill: 1,
           fillColor: false
         }
+      }
+    });
+
+    plot.getPlaceholder().bind("plothover", function(event, pos, item) {
+      if (item) {
+        $("#hover-details").text(JSON.stringify(item.datapoint));
+      } else {
+        $("#hover-details").html("&nbsp;");
       }
     });
 
@@ -61,6 +86,7 @@
   <div id="content">
 
     <div class="demo-container">
+      <div>Selected point: <span id="hover-details">&nbsp;</span></div>
       <div id="placeholder" class="demo-placeholder"></div>
     </div>
 
