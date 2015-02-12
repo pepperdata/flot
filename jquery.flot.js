@@ -586,7 +586,11 @@ Licensed under the MIT license.
                         zero: true
                     },
                     shadowSize: 3,
-                    highlightColor: null
+                    highlightColor: null,
+                    highlightSizeMultiplier: 1.5,
+                    // TODO(jeremy): maybe move this into the line object?
+                    highlightLineColor: null,
+                    highlightLineAreaColor: null
                 },
                 grid: {
                     show: true,
@@ -614,6 +618,7 @@ Licensed under the MIT license.
                 },
                 hooks: {}
             },
+        backSurface = null, // the canvas for the grid, axis and markings
         surface = null,     // the canvas for the plot itself
         overlay = null,     // canvas for interactive stuff on top of plot
         eventHolder = null, // jQuery object that events should be bound to
@@ -640,6 +645,7 @@ Licensed under the MIT license.
         plot.setupGrid = setupGrid;
         plot.draw = draw;
         plot.getPlaceholder = function() { return placeholder; };
+        plot.getBackCanvas = function() { return backSurface.element; };
         plot.getCanvas = function() { return surface.element; };
         plot.getPlotOffset = function() { return plotOffset; };
         plot.width = function () { return plotWidth; };
@@ -680,6 +686,7 @@ Licensed under the MIT license.
 
             series = [];
             options = null;
+            backSurface = null;
             surface = null;
             overlay = null;
             eventHolder = null;
@@ -694,6 +701,7 @@ Licensed under the MIT license.
         plot.resize = function () {
           var width = placeholder.width(),
             height = placeholder.height();
+            backSurface.resize(width, height);
             surface.resize(width, height);
             overlay.resize(width, height);
         };
@@ -863,7 +871,12 @@ Licensed under the MIT license.
                 options.series.shadowSize = options.shadowSize;
             if (options.highlightColor != null)
                 options.series.highlightColor = options.highlightColor;
-
+            if (options.highlightSizeMultiplier != null)
+                options.series.highlightSizeMultiplier = options.highlightSizeMultiplier;
+            if (options.highlightLineColor != null)
+                options.series.highlightLineColor = options.highlightLineColor;
+            if (options.highlightLineAreaColor != null)
+                options.series.highlightLineAreaColor = options.highlightLineAreaColor;
             // save options on axes for future reference
             for (i = 0; i < options.xaxes.length; ++i)
                 getOrCreateAxis(xaxes, i + 1).options = options.xaxes[i];
@@ -1310,9 +1323,10 @@ Licensed under the MIT license.
             if (placeholder.css("position") == 'static')
                 placeholder.css("position", "relative"); // for positioning labels and overlay
 
+            backSurface = new Canvas("flot-back", placeholder);
             surface = new Canvas("flot-base", placeholder);
             overlay = new Canvas("flot-overlay", placeholder); // overlay canvas for interactive features
-
+            bctx = backSurface.context;
             ctx = surface.context;
             octx = overlay.context;
 
@@ -1402,7 +1416,7 @@ Licensed under the MIT license.
                 ticks = axis.ticks || [],
                 labelWidth = opts.labelWidth || 0,
                 labelHeight = opts.labelHeight || 0,
-                maxWidth = labelWidth || (axis.direction == "x" ? Math.floor(surface.width / (ticks.length || 1)) : null),
+                maxWidth = labelWidth || (axis.direction == "x" ? Math.floor(backSurface.width / (ticks.length || 1)) : null),
                 legacyStyles = axis.direction + "Axis " + axis.direction + axis.n + "Axis",
                 layer = "flot-" + axis.direction + "-axis flot-" + axis.direction + axis.n + "-axis " + legacyStyles,
                 font = opts.font || "flot-tick-label tickLabel";
@@ -1414,7 +1428,7 @@ Licensed under the MIT license.
                 if (!t.label)
                     continue;
 
-                var info = surface.getTextInfo(layer, t.label, font, null, maxWidth);
+                var info = backSurface.getTextInfo(layer, t.label, font, null, maxWidth);
 
                 labelWidth = Math.max(labelWidth, info.width);
                 labelHeight = Math.max(labelHeight, info.height);
@@ -1482,7 +1496,7 @@ Licensed under the MIT license.
 
                 if (pos == "bottom") {
                     plotOffset.bottom += lh + axisMargin;
-                    axis.box = { top: surface.height - plotOffset.bottom, height: lh };
+                    axis.box = { top: backSurface.height - plotOffset.bottom, height: lh };
                 }
                 else {
                     axis.box = { top: plotOffset.top + axisMargin, height: lh };
@@ -1498,7 +1512,7 @@ Licensed under the MIT license.
                 }
                 else {
                     plotOffset.right += lw + axisMargin;
-                    axis.box = { left: surface.width - plotOffset.right, width: lw };
+                    axis.box = { left: backSurface.width - plotOffset.right, width: lw };
                 }
             }
 
@@ -1514,11 +1528,11 @@ Licensed under the MIT license.
             // dimension, we can set the remaining dimension coordinates
             if (axis.direction == "x") {
                 axis.box.left = plotOffset.left - axis.labelWidth / 2;
-                axis.box.width = surface.width - plotOffset.left - plotOffset.right + axis.labelWidth;
+                axis.box.width = backSurface.width - plotOffset.left - plotOffset.right + axis.labelWidth;
             }
             else {
                 axis.box.top = plotOffset.top - axis.labelHeight / 2;
-                axis.box.height = surface.height - plotOffset.bottom - plotOffset.top + axis.labelHeight;
+                axis.box.height = backSurface.height - plotOffset.bottom - plotOffset.top + axis.labelHeight;
             }
         }
 
@@ -1626,8 +1640,8 @@ Licensed under the MIT license.
                 });
             }
 
-            plotWidth = surface.width - plotOffset.left - plotOffset.right;
-            plotHeight = surface.height - plotOffset.bottom - plotOffset.top;
+            plotWidth = backSurface.width - plotOffset.left - plotOffset.right;
+            plotHeight = backSurface.height - plotOffset.bottom - plotOffset.top;
 
             // now we got the proper plot dimensions, we can compute the scaling
             $.each(axes, function (_, axis) {
@@ -1690,7 +1704,7 @@ Licensed under the MIT license.
             else
                 // heuristic based on the model a*sqrt(x) fitted to
                 // some data points that seemed reasonable
-                noTicks = 0.3 * Math.sqrt(axis.direction == "x" ? surface.width : surface.height);
+                noTicks = 0.3 * Math.sqrt(axis.direction == "x" ? backSurface.width : backSurface.height);
 
             var delta = (axis.max - axis.min) / noTicks,
                 dec = -Math.floor(Math.log(delta) / Math.LN10),
@@ -1863,10 +1877,10 @@ Licensed under the MIT license.
         }
 
         function draw() {
-
+            backSurface.clear();
             surface.clear();
 
-            executeHooks(hooks.drawBackground, [ctx]);
+            executeHooks(hooks.drawBackground, [bctx]);
 
             var grid = options.grid;
 
@@ -1880,7 +1894,7 @@ Licensed under the MIT license.
 
             for (var i = 0; i < series.length; ++i) {
                 executeHooks(hooks.drawSeries, [ctx, series[i]]);
-                drawSeries(series[i]);
+                drawSeries(series[i], ctx);
             }
 
             executeHooks(hooks.draw, [ctx]);
@@ -1888,7 +1902,7 @@ Licensed under the MIT license.
             if (grid.show && grid.aboveData) {
                 drawGrid();
             }
-
+            backSurface.render();
             surface.render();
 
             // A draw implies that either the axes or data have changed, so we
@@ -1932,19 +1946,19 @@ Licensed under the MIT license.
         }
 
         function drawBackground() {
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
+            bctx.save();
+            bctx.translate(plotOffset.left, plotOffset.top);
 
-            ctx.fillStyle = getColorOrGradient(options.grid.backgroundColor, plotHeight, 0, "rgba(255, 255, 255, 0)");
-            ctx.fillRect(0, 0, plotWidth, plotHeight);
-            ctx.restore();
+            bctx.fillStyle = getColorOrGradient(options.grid.backgroundColor, plotHeight, 0, "rgba(255, 255, 255, 0)");
+            bctx.fillRect(0, 0, plotWidth, plotHeight);
+            bctx.restore();
         }
 
         function drawGrid() {
             var i, axes, bw, bc;
 
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
+            bctx.save();
+            bctx.translate(plotOffset.left, plotOffset.top);
 
             // draw the ticks
             axes = allAxes();
@@ -1956,7 +1970,7 @@ Licensed under the MIT license.
                 if (!axis.show || axis.ticks.length == 0)
                     continue;
 
-                ctx.lineWidth = 1;
+                bctx.lineWidth = 1;
 
                 // find the edges
                 if (axis.direction == "x") {
@@ -1976,15 +1990,15 @@ Licensed under the MIT license.
 
                 // draw tick bar
                 if (!axis.innermost) {
-                    ctx.strokeStyle = axis.options.color;
-                    ctx.beginPath();
+                    bctx.strokeStyle = axis.options.color;
+                    bctx.beginPath();
                     xoff = yoff = 0;
                     if (axis.direction == "x")
                         xoff = plotWidth + 1;
                     else
                         yoff = plotHeight + 1;
 
-                    if (ctx.lineWidth == 1) {
+                    if (bctx.lineWidth == 1) {
                         if (axis.direction == "x") {
                             y = Math.floor(y) + 0.5;
                         } else {
@@ -1992,16 +2006,16 @@ Licensed under the MIT license.
                         }
                     }
 
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + xoff, y + yoff);
-                    ctx.stroke();
+                    bctx.moveTo(x, y);
+                    bctx.lineTo(x + xoff, y + yoff);
+                    bctx.stroke();
                 }
 
                 // draw ticks
 
-                ctx.strokeStyle = axis.options.tickColor;
+                bctx.strokeStyle = axis.options.tickColor;
 
-                ctx.beginPath();
+                bctx.beginPath();
                 for (i = 0; i < axis.ticks.length; ++i) {
                     var v = axis.ticks[i].v;
 
@@ -2029,18 +2043,18 @@ Licensed under the MIT license.
                             xoff = -xoff;
                     }
 
-                    if (ctx.lineWidth == 1) {
+                    if (bctx.lineWidth == 1) {
                         if (axis.direction == "x")
                             x = Math.floor(x) + 0.5;
                         else
                             y = Math.floor(y) + 0.5;
                     }
 
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + xoff, y + yoff);
+                    bctx.moveTo(x, y);
+                    bctx.lineTo(x + xoff, y + yoff);
                 }
 
-                ctx.stroke();
+                bctx.stroke();
             }
 
             // draw markings
@@ -2099,20 +2113,20 @@ Licensed under the MIT license.
                     if (xequal || yequal) {
                         var lineWidth = m.lineWidth || options.grid.markingsLineWidth,
                             subPixel = lineWidth % 2 ? 0.5 : 0;
-                        ctx.beginPath();
-                        ctx.strokeStyle = m.color || options.grid.markingsColor;
-                        ctx.lineWidth = lineWidth;
+                        bctx.beginPath();
+                        bctx.strokeStyle = m.color || options.grid.markingsColor;
+                        bctx.lineWidth = lineWidth;
                         if (xequal) {
-                            ctx.moveTo(xrange.to + subPixel, yrange.from);
-                            ctx.lineTo(xrange.to + subPixel, yrange.to);
+                            bctx.moveTo(xrange.to + subPixel, yrange.from);
+                            bctx.lineTo(xrange.to + subPixel, yrange.to);
                         } else {
-                            ctx.moveTo(xrange.from, yrange.to + subPixel);
-                            ctx.lineTo(xrange.to, yrange.to + subPixel);
+                            bctx.moveTo(xrange.from, yrange.to + subPixel);
+                            bctx.lineTo(xrange.to, yrange.to + subPixel);
                         }
-                        ctx.stroke();
+                        bctx.stroke();
                     } else {
-                        ctx.fillStyle = m.color || options.grid.markingsColor;
-                        ctx.fillRect(xrange.from, yrange.to,
+                        bctx.fillStyle = m.color || options.grid.markingsColor;
+                        bctx.fillRect(xrange.from, yrange.to,
                             xrange.to - xrange.from,
                             yrange.from - yrange.to);
                     }
@@ -2133,49 +2147,49 @@ Licensed under the MIT license.
                     }
 
                     if (bw.top > 0) {
-                        ctx.strokeStyle = bc.top;
-                        ctx.lineWidth = bw.top;
-                        ctx.beginPath();
-                        ctx.moveTo(0 - bw.left, 0 - bw.top/2);
-                        ctx.lineTo(plotWidth, 0 - bw.top/2);
-                        ctx.stroke();
+                        bctx.strokeStyle = bc.top;
+                        bctx.lineWidth = bw.top;
+                        bctx.beginPath();
+                        bctx.moveTo(0 - bw.left, 0 - bw.top/2);
+                        bctx.lineTo(plotWidth, 0 - bw.top/2);
+                        bctx.stroke();
                     }
 
                     if (bw.right > 0) {
-                        ctx.strokeStyle = bc.right;
-                        ctx.lineWidth = bw.right;
-                        ctx.beginPath();
-                        ctx.moveTo(plotWidth + bw.right / 2, 0 - bw.top);
-                        ctx.lineTo(plotWidth + bw.right / 2, plotHeight);
-                        ctx.stroke();
+                        bctx.strokeStyle = bc.right;
+                        bctx.lineWidth = bw.right;
+                        bctx.beginPath();
+                        bctx.moveTo(plotWidth + bw.right / 2, 0 - bw.top);
+                        bctx.lineTo(plotWidth + bw.right / 2, plotHeight);
+                        bctx.stroke();
                     }
 
                     if (bw.bottom > 0) {
-                        ctx.strokeStyle = bc.bottom;
-                        ctx.lineWidth = bw.bottom;
-                        ctx.beginPath();
-                        ctx.moveTo(plotWidth + bw.right, plotHeight + bw.bottom / 2);
-                        ctx.lineTo(0, plotHeight + bw.bottom / 2);
-                        ctx.stroke();
+                        bctx.strokeStyle = bc.bottom;
+                        bctx.lineWidth = bw.bottom;
+                        bctx.beginPath();
+                        bctx.moveTo(plotWidth + bw.right, plotHeight + bw.bottom / 2);
+                        bctx.lineTo(0, plotHeight + bw.bottom / 2);
+                        bctx.stroke();
                     }
 
                     if (bw.left > 0) {
-                        ctx.strokeStyle = bc.left;
-                        ctx.lineWidth = bw.left;
-                        ctx.beginPath();
-                        ctx.moveTo(0 - bw.left/2, plotHeight + bw.bottom);
-                        ctx.lineTo(0- bw.left/2, 0);
-                        ctx.stroke();
+                        bctx.strokeStyle = bc.left;
+                        bctx.lineWidth = bw.left;
+                        bctx.beginPath();
+                        bctx.moveTo(0 - bw.left/2, plotHeight + bw.bottom);
+                        bctx.lineTo(0- bw.left/2, 0);
+                        bctx.stroke();
                     }
                 }
                 else {
-                    ctx.lineWidth = bw;
-                    ctx.strokeStyle = options.grid.borderColor;
-                    ctx.strokeRect(-bw/2, -bw/2, plotWidth + bw, plotHeight + bw);
+                    bctx.lineWidth = bw;
+                    bctx.strokeStyle = options.grid.borderColor;
+                    bctx.strokeRect(-bw/2, -bw/2, plotWidth + bw, plotHeight + bw);
                 }
             }
 
-            ctx.restore();
+            bctx.restore();
         }
 
         function drawAxisLabels() {
@@ -2191,7 +2205,7 @@ Licensed under the MIT license.
                 // otherwise plugins, like flot-tickrotor, that draw their own
                 // tick labels will end up with both theirs and the defaults.
 
-                surface.removeText(layer);
+                backSurface.removeText(layer);
 
                 if (!axis.show || axis.ticks.length == 0)
                     return;
@@ -2222,21 +2236,21 @@ Licensed under the MIT license.
                         }
                     }
 
-                    surface.addText(layer, x, y, tick.label, font, null, null, halign, valign);
+                    backSurface.addText(layer, x, y, tick.label, font, null, null, halign, valign);
                 }
             });
         }
 
-        function drawSeries(series) {
+        function drawSeries(series, context) {
             if (series.lines.show)
-                drawSeriesLines(series);
+                drawSeriesLines(series, context);
             if (series.bars.show)
-                drawSeriesBars(series);
+                drawSeriesBars(series, context);
             if (series.points.show)
-                drawSeriesPoints(series);
+                drawSeriesPoints(series, context);
         }
 
-        function drawSeriesLines(series) {
+        function drawSeriesLines(series, context, isHighlighting) {
             function plotLine(datapoints, xoffset, yoffset, axisx, axisy) {
               var singularLineSize = 1;
               var onepx = axisx.c2p(singularLineSize) - axisx.c2p(0);
@@ -2244,7 +2258,7 @@ Licensed under the MIT license.
                     ps = datapoints.pointsize,
                     prevx = null, prevy = null;
 
-                ctx.beginPath();
+                context.beginPath();
                 for (var i = ps; i < points.length; i += ps) {
                     var x0 = points[i - ps - ps],
                         x1 = points[i - ps], y1 = points[i - ps + 1],
@@ -2321,13 +2335,13 @@ Licensed under the MIT license.
                     }
 
                     if (x1 != prevx || y1 != prevy)
-                        ctx.moveTo(axisx.p2c(x1) + xoffset, axisy.p2c(y1) + yoffset);
+                    context.moveTo(axisx.p2c(x1) + xoffset, axisy.p2c(y1) + yoffset);
 
                     prevx = x2;
                     prevy = y2;
-                    ctx.lineTo(axisx.p2c(x2) + xoffset, axisy.p2c(y2) + yoffset);
+                    context.lineTo(axisx.p2c(x2) + xoffset, axisy.p2c(y2) + yoffset);
                 }
-                ctx.stroke();
+                context.stroke();
             }
 
             function plotLineArea(datapoints, axisx, axisy) {
@@ -2361,7 +2375,7 @@ Licensed under the MIT license.
 
                         if (ps < 0 && i == segmentStart + ps) {
                             // done with the reverse sweep
-                            ctx.fill();
+                            context.fill();
                             areaOpen = false;
                             ps = -ps;
                             ypos = 1;
@@ -2405,20 +2419,20 @@ Licensed under the MIT license.
 
                     if (!areaOpen) {
                         // open area
-                        ctx.beginPath();
-                        ctx.moveTo(axisx.p2c(x1), axisy.p2c(bottom));
+                        context.beginPath();
+                        context.moveTo(axisx.p2c(x1), axisy.p2c(bottom));
                         areaOpen = true;
                     }
 
                     // now first check the case where both is outside
                     if (y1 >= axisy.max && y2 >= axisy.max) {
-                        ctx.lineTo(axisx.p2c(x1), axisy.p2c(axisy.max));
-                        ctx.lineTo(axisx.p2c(x2), axisy.p2c(axisy.max));
+                      context.lineTo(axisx.p2c(x1), axisy.p2c(axisy.max));
+                      context.lineTo(axisx.p2c(x2), axisy.p2c(axisy.max));
                         continue;
                     }
                     else if (y1 <= axisy.min && y2 <= axisy.min) {
-                        ctx.lineTo(axisx.p2c(x1), axisy.p2c(axisy.min));
-                        ctx.lineTo(axisx.p2c(x2), axisy.p2c(axisy.min));
+                      context.lineTo(axisx.p2c(x1), axisy.p2c(axisy.min));
+                      context.lineTo(axisx.p2c(x2), axisy.p2c(axisy.min));
                         continue;
                     }
 
@@ -2454,56 +2468,78 @@ Licensed under the MIT license.
                     // if the x value was changed we got a rectangle
                     // to fill
                     if (x1 != x1old) {
-                        ctx.lineTo(axisx.p2c(x1old), axisy.p2c(y1));
+                      context.lineTo(axisx.p2c(x1old), axisy.p2c(y1));
                         // it goes to (x1, y1), but we fill that below
                     }
 
                     // fill triangular section, this sometimes result
                     // in redundant points if (x1, y1) hasn't changed
                     // from previous line to, but we just ignore that
-                    ctx.lineTo(axisx.p2c(x1), axisy.p2c(y1));
-                    ctx.lineTo(axisx.p2c(x2), axisy.p2c(y2));
+                    context.lineTo(axisx.p2c(x1), axisy.p2c(y1));
+                    context.lineTo(axisx.p2c(x2), axisy.p2c(y2));
 
                     // fill the other rectangle if it's there
                     if (x2 != x2old) {
-                        ctx.lineTo(axisx.p2c(x2), axisy.p2c(y2));
-                        ctx.lineTo(axisx.p2c(x2old), axisy.p2c(y2));
+                      context.lineTo(axisx.p2c(x2), axisy.p2c(y2));
+                      context.lineTo(axisx.p2c(x2old), axisy.p2c(y2));
                     }
                 }
             }
 
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
-            ctx.lineJoin = "round";
+            context.save();
+            // if we are highlighting the canvas is already translated
+            if (!isHighlighting) {
+              context.translate(plotOffset.left, plotOffset.top);
+            }
+            context.lineJoin = "round";
 
             var lw = series.lines.lineWidth,
                 sw = series.shadowSize;
             // FIXME: consider another form of shadow when filling is turned on
             if (lw > 0 && sw > 0) {
                 // draw shadow as a thick and thin line with transparency
-                ctx.lineWidth = sw;
-                ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                context.lineWidth = isHighlighting ? sw * options.series.highlightSizeMultiplier : sw;
+
+                context.strokeStyle = "rgba(0,0,0,0.1)";
                 // position shadow at angle from the mid of line
                 var angle = Math.PI/18;
                 plotLine(series.datapoints, Math.sin(angle) * (lw/2 + sw/2), Math.cos(angle) * (lw/2 + sw/2), series.xaxis, series.yaxis);
-                ctx.lineWidth = sw/2;
+                context.lineWidth = sw/2;
                 plotLine(series.datapoints, Math.sin(angle) * (lw/2 + sw/4), Math.cos(angle) * (lw/2 + sw/4), series.xaxis, series.yaxis);
             }
 
-            ctx.lineWidth = lw;
-            ctx.strokeStyle = series.color;
-            var fillStyle = getFillStyle(series.lines, series.color, 0, plotHeight);
+            var fillStyle;
+            if (isHighlighting) {
+                context.lineWidth =  lw * options.highlightSizeMultiplier;
+                context.strokeStyle = (typeof series.highlightLineColor === "string")
+                  ? series.highlightLineColor
+                  : $.color.parse(series.color).scale('a', 0.5).toString();
+                // line fill
+                if (series.lines.fill) {
+                  if ((typeof series.highlightLineAreaColor === "string")) {
+                    fillStyle = series.highlightLineAreaColor;
+                  } else if (series.highlightLineAreaColor) {
+                    // if this is set to something truthy, just use the series color with an alpha
+                    fillStyle = $.color.parse(series.color).scale('a', 0.5).toString();
+                  }
+                }
+            } else {
+              context.lineWidth = lw;
+              context.strokeStyle = series.color;
+              fillStyle = getFillStyle(series.lines, series.color, 0, plotHeight);
+            }
+
             if (fillStyle) {
-                ctx.fillStyle = fillStyle;
+                context.fillStyle = fillStyle;
                 plotLineArea(series.datapoints, series.xaxis, series.yaxis);
             }
 
             if (lw > 0)
                 plotLine(series.datapoints, 0, 0, series.xaxis, series.yaxis);
-            ctx.restore();
+                context.restore();
         }
 
-        function drawSeriesPoints(series) {
+        function drawSeriesPoints(series, context) {
             function plotPoints(datapoints, radius, fillStyle, offset, shadow, axisx, axisy, symbol) {
                 var points = datapoints.points, ps = datapoints.pointsize;
 
@@ -2512,34 +2548,34 @@ Licensed under the MIT license.
                     if (x == null || x < axisx.min || x > axisx.max || y < axisy.min || y > axisy.max)
                         continue;
 
-                    ctx.beginPath();
+                    context.beginPath();
                     x = axisx.p2c(x);
                     y = axisy.p2c(y) + offset;
                     if (symbol == "circle")
-                        ctx.arc(x, y, radius, 0, shadow ? Math.PI : Math.PI * 2, false);
+                        context.arc(x, y, radius, 0, shadow ? Math.PI : Math.PI * 2, false);
                     else
                         symbol(ctx, x, y, radius, shadow);
-                    ctx.closePath();
+                    context.closePath();
 
                     if (fillStyle) {
-                        ctx.fillStyle = fillStyle;
-                        ctx.fill();
+                        context.fillStyle = fillStyle;
+                        context.fill();
                     }
-                    ctx.stroke();
+                    context.stroke();
                 }
             }
 
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
+            context.save();
+            context.translate(plotOffset.left, plotOffset.top);
 
             var lw = series.points.lineWidth,
                 sw = series.shadowSize,
                 radius = series.points.radius,
                 symbol = series.points.symbol;
 
-            // If the user sets the line width to 0, we change it to a very 
+            // If the user sets the line width to 0, we change it to a very
             // small value. A line width of 0 seems to force the default of 1.
-            // Doing the conditional here allows the shadow setting to still be 
+            // Doing the conditional here allows the shadow setting to still be
             // optional even with a lineWidth of 0.
 
             if( lw == 0 )
@@ -2548,22 +2584,22 @@ Licensed under the MIT license.
             if (lw > 0 && sw > 0) {
                 // draw shadow in two steps
                 var w = sw / 2;
-                ctx.lineWidth = w;
-                ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                context.lineWidth = w;
+                context.strokeStyle = "rgba(0,0,0,0.1)";
                 plotPoints(series.datapoints, radius, null, w + w/2, true,
-                           series.xaxis, series.yaxis, symbol);
+                series.xaxis, series.yaxis, symbol);
 
-                ctx.strokeStyle = "rgba(0,0,0,0.2)";
+                context.strokeStyle = "rgba(0,0,0,0.2)";
                 plotPoints(series.datapoints, radius, null, w/2, true,
                            series.xaxis, series.yaxis, symbol);
             }
 
-            ctx.lineWidth = lw;
-            ctx.strokeStyle = series.color;
+            context.lineWidth = lw;
+            context.strokeStyle = series.color;
             plotPoints(series.datapoints, radius,
                        getFillStyle(series.points, series.color), 0, false,
                        series.xaxis, series.yaxis, symbol);
-            ctx.restore();
+            context.restore();
         }
 
         function drawBar(x, y, b, barLeft, barRight, fillStyleCallback, axisx, axisy, c, horizontal, lineWidth) {
@@ -2671,7 +2707,7 @@ Licensed under the MIT license.
             }
         }
 
-        function drawSeriesBars(series) {
+        function drawSeriesBars(series, context) {
             function plotBars(datapoints, barLeft, barRight, fillStyleCallback, axisx, axisy) {
                 var points = datapoints.points, ps = datapoints.pointsize;
 
@@ -2682,12 +2718,12 @@ Licensed under the MIT license.
                 }
             }
 
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
+            context.save();
+            context.translate(plotOffset.left, plotOffset.top);
 
             // FIXME: figure out a way to add shadows (for instance along the right edge)
-            ctx.lineWidth = series.bars.lineWidth;
-            ctx.strokeStyle = series.color;
+            context.lineWidth = series.bars.lineWidth;
+            context.strokeStyle = series.color;
 
             var barLeft;
 
@@ -2704,7 +2740,7 @@ Licensed under the MIT license.
 
             var fillStyleCallback = series.bars.fill ? function (bottom, top) { return getFillStyle(series.bars, series.color, bottom, top); } : null;
             plotBars(series.datapoints, barLeft, barLeft + series.bars.barWidth, fillStyleCallback, series.xaxis, series.yaxis);
-            ctx.restore();
+            context.restore();
         }
 
         function getFillStyle(filloptions, seriesColor, bottom, top) {
@@ -3056,8 +3092,10 @@ Licensed under the MIT license.
 
                 if (hi.series.bars.show)
                     drawBarHighlight(hi.series, hi.point);
-                else
+                else {
                     drawPointHighlight(hi.series, hi.point);
+                    drawSeriesLines(hi.series, octx, true);
+                  }
             }
             octx.restore();
 
@@ -3119,7 +3157,9 @@ Licensed under the MIT license.
         function drawPointHighlight(series, point) {
             var x = point[0], y = point[1],
                 axisx = series.xaxis, axisy = series.yaxis,
-                highlightColor = (typeof series.highlightColor === "string") ? series.highlightColor : $.color.parse(series.color).scale('a', 0.5).toString();
+                highlightColor = (typeof series.highlightColor === "string")
+                    ? series.highlightColor
+                    : $.color.parse(series.color).scale('a', 0.5).toString();
 
             if (x < axisx.min || x > axisx.max || y < axisy.min || y > axisy.max)
                 return;
@@ -3128,7 +3168,7 @@ Licensed under the MIT license.
             var fillStyle = getFillStyle(series.points, series.color);
             octx.lineWidth = pointRadius;
             octx.strokeStyle = highlightColor;
-            var radius = 1.5 * pointRadius;
+            var radius = options.series.highlightSizeMultiplier * pointRadius;
             x = axisx.p2c(x);
             y = axisy.p2c(y);
 

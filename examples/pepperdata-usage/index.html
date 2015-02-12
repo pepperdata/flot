@@ -59,14 +59,18 @@
           fill: 1,
           fillColor: false
         }
-      }
+      },
+      highlightLineColor: true,
+      highlightLineAreaColor: true
     });
 
     plot.getPlaceholder().bind("plothover", function(event, pos, item) {
       if (item) {
         $("#hover-details").text(JSON.stringify(item.datapoint));
+        $(plot.getPlaceholder()).find(".flot-base").css("opacity", 0.5);
       } else {
         $("#hover-details").html("&nbsp;");
+        $(plot.getPlaceholder()).find(".flot-base").css("opacity", 1);
       }
     });
 
