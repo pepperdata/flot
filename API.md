@@ -108,7 +108,9 @@ The format of a single series object is as follows:
     shadowSize: number
     highlightColor: color or number
     highlightLineColor: boolean or color
-    highlightAreaColor: boolean or color
+    highlightLineAreaColor: boolean or color
+    highlightAllPoints: boolean
+    highlightShadowSize: number
 }
 ```
 

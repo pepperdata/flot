@@ -54,14 +54,15 @@
           lineWidth: 1
         },
         points: {
-          show: true,
+          show: false,
           radius: 1,
           fill: 1,
           fillColor: false
         }
       },
       highlightLineColor: true,
-      highlightLineAreaColor: true
+      highlightLineAreaColor: true,
+      highlightAllPoints: true
     });
 
     plot.getPlaceholder().bind("plothover", function(event, pos, item) {

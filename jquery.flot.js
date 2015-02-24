@@ -590,7 +590,9 @@ Licensed under the MIT license.
                     highlightSizeMultiplier: 1.5,
                     // TODO(jeremy): maybe move this into the line object?
                     highlightLineColor: null,
-                    highlightLineAreaColor: null
+                    highlightLineAreaColor: null,
+                    highlightAllPoints: false,
+                    highlightShadowSize: null
                 },
                 grid: {
                     show: true,
@@ -877,6 +879,10 @@ Licensed under the MIT license.
                 options.series.highlightLineColor = options.highlightLineColor;
             if (options.highlightLineAreaColor != null)
                 options.series.highlightLineAreaColor = options.highlightLineAreaColor;
+            if (options.highlightAllPoints != null)
+                options.series.highlightAllPoints = options.highlightAllPoints;
+            if (options.highlightShadowSize != null)
+                options.series.highlightShadowSize = options.highlightShadowSize;
             // save options on axes for future reference
             for (i = 0; i < options.xaxes.length; ++i)
                 getOrCreateAxis(xaxes, i + 1).options = options.xaxes[i];
@@ -1317,7 +1323,9 @@ Licensed under the MIT license.
 
             placeholder.css("padding", 0) // padding messes up the positioning
                 .children().filter(function(){
-                    return !$(this).hasClass("flot-overlay") && !$(this).hasClass('flot-base');
+                    return !$(this).hasClass("flot-overlay")
+                        && !$(this).hasClass('flot-base')
+                        && !$(this).hasClass('flot-back');
                 }).remove();
 
             if (placeholder.css("position") == 'static')
@@ -2489,44 +2497,49 @@ Licensed under the MIT license.
             context.save();
             // if we are highlighting the canvas is already translated
             if (!isHighlighting) {
-              context.translate(plotOffset.left, plotOffset.top);
+                context.translate(plotOffset.left, plotOffset.top);
             }
             context.lineJoin = "round";
 
             var lw = series.lines.lineWidth,
                 sw = series.shadowSize;
+            if (isHighlighting) {
+                sw = series.highlightShadowSize
+                    ? series.highlightShadowSize
+                    : sw * options.series.highlightSizeMultiplier;
+                if (lw) {
+                    lw = lw + 1;
+                }
+            }
             // FIXME: consider another form of shadow when filling is turned on
             if (lw > 0 && sw > 0) {
-                // draw shadow as a thick and thin line with transparency
-                context.lineWidth = isHighlighting ? sw * options.series.highlightSizeMultiplier : sw;
-
-                context.strokeStyle = "rgba(0,0,0,0.1)";
-                // position shadow at angle from the mid of line
-                var angle = Math.PI/18;
-                plotLine(series.datapoints, Math.sin(angle) * (lw/2 + sw/2), Math.cos(angle) * (lw/2 + sw/2), series.xaxis, series.yaxis);
-                context.lineWidth = sw/2;
-                plotLine(series.datapoints, Math.sin(angle) * (lw/2 + sw/4), Math.cos(angle) * (lw/2 + sw/4), series.xaxis, series.yaxis);
+                // draw a clear line just to get the shadow
+                context.lineWidth = sw;
+                context.shadowColor = isHighlighting ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.5)";
+                context.shadowBlur = sw;
+                context.shadowOffsetX = sw/2;
+                context.shadowOffsetY = sw/2;
             }
 
             var fillStyle;
             if (isHighlighting) {
-                context.lineWidth =  lw * options.highlightSizeMultiplier;
+                context.lineWidth =  lw;
                 context.strokeStyle = (typeof series.highlightLineColor === "string")
-                  ? series.highlightLineColor
-                  : $.color.parse(series.color).scale('a', 0.5).toString();
+                    ? series.highlightLineColor
+                    : $.color.parse(series.color).scale('a', 0.5).toString();
                 // line fill
                 if (series.lines.fill) {
-                  if ((typeof series.highlightLineAreaColor === "string")) {
-                    fillStyle = series.highlightLineAreaColor;
-                  } else if (series.highlightLineAreaColor) {
-                    // if this is set to something truthy, just use the series color with an alpha
-                    fillStyle = $.color.parse(series.color).scale('a', 0.5).toString();
-                  }
+                    if ((typeof series.highlightLineAreaColor === "string")) {
+                        fillStyle = series.highlightLineAreaColor;
+                    } else if (series.highlightLineAreaColor) {
+                        // if this is set to something truthy, just use the series color with an alpha
+                        fillStyle = $.color.parse(series.color).scale('a', 0.5).toString();
+                    }
                 }
             } else {
-              context.lineWidth = lw;
-              context.strokeStyle = series.color;
-              fillStyle = getFillStyle(series.lines, series.color, 0, plotHeight);
+                context.lineWidth = lw;
+                context.strokeStyle = series.color;
+                fillStyle = getFillStyle(series.lines, series.color, 0, plotHeight);
             }
 
             if (fillStyle) {
@@ -2534,12 +2547,13 @@ Licensed under the MIT license.
                 plotLineArea(series.datapoints, series.xaxis, series.yaxis);
             }
 
-            if (lw > 0)
+            if (lw > 0) {
                 plotLine(series.datapoints, 0, 0, series.xaxis, series.yaxis);
-                context.restore();
+            }
+            context.restore();
         }
 
-        function drawSeriesPoints(series, context) {
+        function drawSeriesPoints(series, context, isHighlighting) {
             function plotPoints(datapoints, radius, fillStyle, offset, shadow, axisx, axisy, symbol) {
                 var points = datapoints.points, ps = datapoints.pointsize;
 
@@ -2566,7 +2580,9 @@ Licensed under the MIT license.
             }
 
             context.save();
-            context.translate(plotOffset.left, plotOffset.top);
+            if (!isHighlighting) {
+                context.translate(plotOffset.left, plotOffset.top);
+            }
 
             var lw = series.points.lineWidth,
                 sw = series.shadowSize,
@@ -3095,7 +3111,10 @@ Licensed under the MIT license.
                 else {
                     drawPointHighlight(hi.series, hi.point);
                     drawSeriesLines(hi.series, octx, true);
-                  }
+                    if (hi.series.highlightAllPoints || hi.series.points.show) {
+                        drawSeriesPoints(hi.series, octx, true);
+                    }
+                }
             }
             octx.restore();
 
