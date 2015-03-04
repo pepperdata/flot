@@ -2267,7 +2267,7 @@ Licensed under the MIT license.
                     prevx = null, prevy = null;
 
                 context.beginPath();
-                for (var i = ps; i < points.length; i += ps) {
+                for (var i = 0; i < points.length; i += ps) {
                     var x0 = points[i - ps - ps],
                         x1 = points[i - ps], y1 = points[i - ps + 1],
                         x2 = points[i], y2 = points[i + 1];
