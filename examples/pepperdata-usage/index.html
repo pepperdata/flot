@@ -4,106 +4,112 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>Flot Examples: Basic Usage</title>
   <link href="../examples.css" rel="stylesheet" type="text/css">
-  <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="../../excanvas.min.js"></script><![endif]-->
+  <!--[if lte IE 8]>
+  <script language="javascript" type="text/javascript" src="../../excanvas.min.js"></script>
+  <![endif]-->
   <script src="../../jquery.js"></script>
   <script src="../../jquery.flot.js"></script>
   <script src="../../jquery.flot.stack.js"></script>
-  <script >
-  $(function() {
+  <script>
+    $(function () {
 
-    var d1 = [];
-    for (var i = 0; i < 14; i += 0.5) {
-      d1.push([i, Math.sin(i) * 5 + 1]);
-    }
-    var d1stack = [];
-    for (var i = 0; i < 14; i += 0.5) {
-        d1stack.push([i, 5]);
-    }
-
-    var d2 = [[0, 3], [4, 8], [8, 5], [9, 13]];
-
-    // A null signifies separate line segments
-
-    var d3 = [[0, 12], [7, 12], null, [8, 2.5], null, [9, 10], [10, 2.5], null, [12, 3]];
-
-    var plot = $.plot("#placeholder", [
-        {
-            data: d1,
-            stack: true,
-            lines: { fill: true}
-        },
-        {
-            data: d1stack,
-            stack: true,
-            lines: { fill: true}
-        },
-        {
-            data: d2,
-            lines: { fill: true}
-        },
-        d3
-      ], {
-      grid: {
-        hoverable: true,
-        clickable: true,
-        autoHighlight: true
-      },
-      series: {
-        lines: {
-          show: true,
-          lineWidth: 1
-        },
-        points: {
-          show: false,
-          radius: 1,
-          fill: 1,
-          fillColor: false
-        }
-      },
-      highlightLineColor: true,
-      highlightLineAreaColor: true,
-      highlightAllPoints: true
-    });
-
-    plot.getPlaceholder().bind("plothover", function(event, pos, item) {
-      if (item) {
-        $("#hover-details").text(JSON.stringify(item.datapoint));
-        $(plot.getPlaceholder()).find(".flot-base").css("opacity", 0.5);
-      } else {
-        $("#hover-details").html("&nbsp;");
-        $(plot.getPlaceholder()).find(".flot-base").css("opacity", 1);
+      var d1 = [];
+      for (var i = 0; i < 14; i += 0.5) {
+        d1.push([i, Math.sin(i) * 5 + 1]);
       }
+      var d1stack = [];
+      for (var i = 0; i < 14; i += 0.5) {
+        d1stack.push([i, 5]);
+      }
+
+      var d2 = [[0, 3], [4, 8], [8, 5], [9, 13]];
+
+      // A null signifies separate line segments
+
+      var d3 = [[0, 12], [7, 12], null, [8, 2.5], null, [9, 10], [10, 2.5], null, [12, 3]];
+      var singlePointDataSet = [[5, 10]];
+
+      var plot = $.plot("#placeholder", [
+        {
+          data: d1,
+          stack: true,
+          lines: {fill: true}
+        },
+        {
+          data: d1stack,
+          stack: true,
+          lines: {fill: true}
+        },
+        {
+          data: d2,
+          lines: {fill: true}
+        },
+        d3,
+        singlePointDataSet
+      ], {
+        grid: {
+          hoverable: true,
+          clickable: true,
+          autoHighlight: true
+        },
+        series: {
+          lines: {
+            show: true,
+            lineWidth: 1
+          },
+          points: {
+            show: false,
+            radius: 1,
+            fill: 1,
+            fillColor: false
+          }
+        },
+        highlightLineColor: true,
+        highlightLineAreaColor: true,
+        highlightAllPoints: true
+      });
+
+      plot.getPlaceholder().bind("plothover", function (event, pos, item) {
+        if (item) {
+          $("#hover-details").text(JSON.stringify(item.datapoint));
+          $(plot.getPlaceholder()).find(".flot-base").css("opacity", 0.5);
+        } else {
+          $("#hover-details").html("&nbsp;");
+          $(plot.getPlaceholder()).find(".flot-base").css("opacity", 1);
+        }
+      });
+
+      // Add the Flot version string to the footer
+
+      $("#footer").prepend("Flot " + $.plot.version + " &ndash; ");
     });
-
-    // Add the Flot version string to the footer
-
-    $("#footer").prepend("Flot " + $.plot.version + " &ndash; ");
-  });
 
   </script>
 </head>
 <body>
 
-  <div id="header">
-    <h2>Basic Usage</h2>
+<div id="header">
+  <h2>Basic Usage</h2>
+</div>
+
+<div id="content">
+
+  <div class="demo-container">
+    <div>Selected point: <span id="hover-details">&nbsp;</span></div>
+    <div id="placeholder" class="demo-placeholder"></div>
   </div>
 
-  <div id="content">
+  <p>You don't have to do much to get an attractive plot. Create a placeholder, make sure it has
+    dimensions (so Flot knows at what size to draw the plot), then call the plot function with your
+    data.</p>
 
-    <div class="demo-container">
-      <div>Selected point: <span id="hover-details">&nbsp;</span></div>
-      <div id="placeholder" class="demo-placeholder"></div>
-    </div>
+  <p>The axes are automatically scaled.</p>
 
-    <p>You don't have to do much to get an attractive plot.  Create a placeholder, make sure it has dimensions (so Flot knows at what size to draw the plot), then call the plot function with your data.</p>
+</div>
 
-    <p>The axes are automatically scaled.</p>
-
-  </div>
-
-  <div id="footer">
-    Copyright &copy; 2007 - 2014 IOLA and Ole Laursen
-  </div>
+<div id="footer">
+  Copyright &copy; 2007 - 2014 IOLA and Ole Laursen
+</div>
 
 </body>
 </html>
