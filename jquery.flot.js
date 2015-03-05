@@ -2412,22 +2412,29 @@
                 var onepx = axisx.c2p(singularLineSize) - axisx.c2p(0);
                 var points = datapoints.points,
                     ps = datapoints.pointsize,
-                    prevx = null, prevy = null;
+                    prevx = null,
+                    prevy = null;
 
                 context.beginPath();
                 for (var i = 0; i < points.length; i += ps) {
                     var x0 = points[i - ps - ps],
-                        x1 = points[i - ps], y1 = points[i - ps + 1],
-                        x2 = points[i], y2 = points[i + 1];
+                        x1 = points[i - ps],
+                        y1 = points[i - ps + 1],
+                        x2 = points[i],
+                        y2 = points[i + 1],
+                        singlePoint = false;
+
 
                     // draw a small line if we get a line segment with only a single point
                     if ((x0 == null || x0 === undefined) && x1 != null && x2 == null) {
                         x2 = x1 + onepx;
                         y2 = y1;
+                        singlePoint = true;
                     } else if (i == points.length - ps && x1 == null && x2 != null) {
                         // is the last point following a null?
                         x1 = x2 - onepx;
                         y1 = y2;
+                        singlePoint = true;
                     }
 
                     if (x1 == null || x2 == null)
@@ -2489,6 +2496,12 @@
                         y2 = (axisx.max - x1) / (x2 - x1) * (y2 - y1) + y1;
                         x2 = axisx.max;
                     }
+                    if (singlePoint) {
+                        // draw the previous path if we've hit a single point
+                        ctx.closePath();
+                        context.stroke();
+                        context.beginPath();
+                    }
 
                     if (x1 != prevx || y1 != prevy)
                         context.moveTo(axisx.p2c(x1) + xoffset, axisy.p2c(y1) + yoffset);
@@ -2496,6 +2509,16 @@
                     prevx = x2;
                     prevy = y2;
                     context.lineTo(axisx.p2c(x2) + xoffset, axisy.p2c(y2) + yoffset);
+                    if (singlePoint) {
+                        // draw the point with a larger width
+                        var originalWidth = context.lineWidth;
+                        context.lineWidth = originalWidth + 2;
+                        ctx.closePath();
+                        context.stroke();
+                        // open up the path again
+                        context.beginPath();
+                        context.lineWidth = originalWidth;
+                    }
                 }
                 context.stroke();
             }
