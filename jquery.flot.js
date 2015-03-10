@@ -2498,7 +2498,6 @@
                     }
                     if (singlePoint) {
                         // draw the previous path if we've hit a single point
-                        ctx.closePath();
                         context.stroke();
                         context.beginPath();
                     }
@@ -2513,7 +2512,6 @@
                         // draw the point with a larger width
                         var originalWidth = context.lineWidth;
                         context.lineWidth = originalWidth + 2;
-                        ctx.closePath();
                         context.stroke();
                         // open up the path again
                         context.beginPath();
