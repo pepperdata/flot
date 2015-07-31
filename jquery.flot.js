@@ -420,10 +420,11 @@
     //     classes or a font-spec object, defining the text's font and style.
     // @param {number=} angle Angle at which to rotate the text, in degrees.
     //     Angle is currently unused, it will be implemented in the future.
-    // @param {number=} width Maximum width of the text before it wraps.
+    // @param {number=} maxWidth Maximum width of the text before it wraps.
+    // @param {number=} width (optional) Actual width of the text.
+    // @param {number=} height (optional) Actual height of the text.
     // @return {object} a text info object.
-
-    Canvas.prototype.getTextInfo = function (layer, text, font, angle, width) {
+    Canvas.prototype.getTextInfo = function (layer, text, font, angle, maxWidth, width, height) {
 
         var textStyle, layerCache, styleCache, info;
 
@@ -458,14 +459,21 @@
         // If we can't find a matching element in our cache, create a new one
 
         if (info == null) {
+            var needToMeasure = !width || !height;
 
             var element = $("<div></div>").html(text)
                 .css({
                     position: "absolute",
-                    'max-width': width,
+                    'max-width': maxWidth,
                     top: -9999
-                })
-                .appendTo(this.getTextLayer(layer));
+                });
+            if (width) {
+                element.css('width', width);
+            }
+
+            if (height) {
+                element.css('height', height);
+            }
 
             if (typeof font === "object") {
                 element.css({
@@ -476,14 +484,20 @@
                 element.addClass(font);
             }
 
+            if (needToMeasure) {
+                element.appendTo(this.getTextLayer(layer));
+            }
+
             info = styleCache[text] = {
-                width: element.outerWidth(true),
-                height: element.outerHeight(true),
+                width: width || element.outerWidth(true),
+                height: height || element.outerHeight(true),
                 element: element,
                 positions: []
             };
 
-            element.detach();
+            if (needToMeasure) {
+                element.detach();
+            }
         }
 
         return info;
@@ -503,15 +517,17 @@
     //     classes or a font-spec object, defining the text's font and style.
     // @param {number=} angle Angle at which to rotate the text, in degrees.
     //     Angle is currently unused, it will be implemented in the future.
-    // @param {number=} width Maximum width of the text before it wraps.
+    // @param {number=} maxWidth Maximum width of the text before it wraps.
     // @param {string=} halign Horizontal alignment of the text; either "left",
     //     "center" or "right".
     // @param {string=} valign Vertical alignment of the text; either "top",
     //     "middle" or "bottom".
+    // @param {number=} width (optional) Actual width of the text.
+    // @param {number=} height (optional) Actual height of the text.
+    Canvas.prototype.addText = function (layer, x, y, text, font, angle, maxWidth, halign, valign,
+                                         width, height) {
 
-    Canvas.prototype.addText = function (layer, x, y, text, font, angle, width, halign, valign) {
-
-        var info = this.getTextInfo(layer, text, font, angle, width),
+        var info = this.getTextInfo(layer, text, font, angle, maxWidth, width, height),
             positions = info.positions;
 
         // Tweak the div's position to match the text's alignment
@@ -1584,7 +1600,8 @@
                     if (!t.label)
                         continue;
 
-                    var info = backSurface.getTextInfo(layer, t.label, font, null, maxWidth);
+                    var info = backSurface.getTextInfo(layer, t.label, font, null, maxWidth,
+                      opts.labelWidth, opts.labelHeight);
 
                     labelWidth = Math.max(labelWidth, info.width);
                     labelHeight = Math.max(labelHeight, info.height);
@@ -2394,7 +2411,8 @@
                         }
                     }
 
-                    backSurface.addText(layer, x, y, tick.label, font, null, null, halign, valign);
+                    backSurface.addText(layer, x, y, tick.label, font, null, null, halign, valign,
+                        axis.labelWidth, axis.labelHeight);
                 }
             });
         }
