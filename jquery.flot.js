@@ -1575,19 +1575,21 @@
                 layer = "flot-" + axis.direction + "-axis flot-" + axis.direction + axis.n + "-axis " + legacyStyles,
                 font = opts.font || "flot-tick-label tickLabel";
 
-            for (var i = 0; i < ticks.length; ++i) {
+            // skip measuring if we already have the dimensions
+            if (!opts.labelWidth || !opts.labelHeight) {
+                for (var i = 0; i < ticks.length; ++i) {
 
-                var t = ticks[i];
+                    var t = ticks[i];
 
-                if (!t.label)
-                    continue;
+                    if (!t.label)
+                        continue;
 
-                var info = backSurface.getTextInfo(layer, t.label, font, null, maxWidth);
+                    var info = backSurface.getTextInfo(layer, t.label, font, null, maxWidth);
 
-                labelWidth = Math.max(labelWidth, info.width);
-                labelHeight = Math.max(labelHeight, info.height);
+                    labelWidth = Math.max(labelWidth, info.width);
+                    labelHeight = Math.max(labelHeight, info.height);
+                }
             }
-
             axis.labelWidth = opts.labelWidth || labelWidth;
             axis.labelHeight = opts.labelHeight || labelHeight;
         }
