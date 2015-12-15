@@ -63,162 +63,176 @@
  */
 
 (function ($) {
-  var options = {
-    crosshair: {
-      mode: null, // one of null, "x", "y" or "xy",
-      color: "rgba(170, 0, 0, 0.80)",
-      textColor: "black",
-      font: "Arial 12px",
-      lineWidth: 1,
-      // label to place next to the crosshair line
-      label: function() {return '';},
-      padding: {
-        top: 10,
-        left: -4
-      }
-    }
-  };
-
-  function init(plot) {
-    // position of crosshair in pixels
-    var crosshair = { x: -1, y: -1, locked: false, showLabel: true };
-
-    plot.setRawCrosshair = function setCrosshairRaw(nextCrosshair) {
-      crosshair = nextCrosshair;
-      plot.triggerRedrawOverlay();
-    };
-
-    plot.setCrosshair = function setCrosshair(pos) {
-      if (!pos)
-        crosshair.x = -1;
-      else {
-        var o = plot.p2c(pos);
-        crosshair.x = Math.max(0, Math.min(o.left, plot.width()));
-        crosshair.y = Math.max(0, Math.min(o.top, plot.height()));
-      }
-
-      plot.triggerRedrawOverlay();
-    };
-
-    plot.clearCrosshair = plot.setCrosshair; // passes null for pos
-
-    plot.lockCrosshair = function lockCrosshair(pos) {
-      if (pos)
-        plot.setCrosshair(pos);
-      crosshair.locked = true;
-    };
-
-    plot.unlockCrosshair = function unlockCrosshair() {
-      crosshair.locked = false;
-    };
-
-    plot.isLockedCrosshair = function isLockedCrosshair() {
-      return crosshair.locked;
-    };
-
-    plot.showLabelCrosshair = function showLabelCrosshair() {
-      crosshair.showLabel = true;
-    };
-
-    plot.hideLabelCrosshair = function hideLabelCrosshair() {
-      crosshair.showLabel = false;
-    };
-
-    function onMouseOut(e) {
-      if (crosshair.locked)
-        return;
-
-      if (crosshair.x != -1) {
-        crosshair.x = -1;
-        plot.triggerRedrawOverlay();
-      }
-      plot.getPlaceholder().trigger("flot.crosshair.setCrosshair", [crosshair]);
-    }
-
-    function onMouseMove(e) {
-      if (crosshair.locked)
-        return;
-
-      if (plot.getSelection && plot.getSelection()) {
-        crosshair.x = -1; // hide the crosshair while selecting
-        return;
-      }
-
-      var offset = plot.offset();
-      crosshair.x = Math.max(0, Math.min(e.pageX - offset.left, plot.width()));
-      crosshair.y = Math.max(0, Math.min(e.pageY - offset.top, plot.height()));
-      // fire an event that the crosshair has been updated
-      plot.getPlaceholder().trigger("flot.crosshair.setCrosshair", [crosshair, plot]);
-      plot.triggerRedrawOverlay();
-    }
-
-    plot.hooks.bindEvents.push(function (plot, eventHolder) {
-      if (!plot.getOptions().crosshair.mode)
-        return;
-
-      eventHolder.mouseout(onMouseOut);
-      eventHolder.mousemove(onMouseMove);
-    });
-
-    plot.hooks.drawOverlay.push(function (plot, ctx) {
-      var options = plot.getOptions();
-      var c = options.crosshair;
-      if (!c.mode)
-        return;
-
-      var plotOffset = plot.getPlotOffset();
-
-      ctx.save();
-      ctx.translate(plotOffset.left, plotOffset.top);
-
-      if (crosshair.x != -1) {
-        var adj = options.crosshair.lineWidth % 2 ? 0.5 : 0;
-
-        ctx.strokeStyle = c.color;
-        ctx.lineWidth = c.lineWidth;
-        ctx.lineJoin = "round";
-
-        ctx.beginPath();
-        if (c.mode.indexOf("x") != -1) {
-          var drawX = Math.floor(crosshair.x) + adj;
-          ctx.moveTo(drawX, 0);
-          ctx.lineTo(drawX, plot.height());
+    var options = {
+        crosshair: {
+            mode: null, // one of null, "x", "y" or "xy",
+            color: "rgba(170, 0, 0, 0.80)",
+            textColor: "black",
+            font: "Arial 12px",
+            lineWidth: 1,
+            // label to place next to the crosshair line
+            label: function() {return '';},
+            padding: {
+                top: 10,
+                left: -4
+            }
         }
-        if (c.mode.indexOf("y") != -1) {
-          var drawY = Math.floor(crosshair.y) + adj;
-          ctx.moveTo(0, drawY);
-          ctx.lineTo(plot.width(), drawY);
-        }
-        ctx.stroke();
-        // draw the text
-        if (crosshair.showLabel) {
-          var pointInDataSpace = plot.c2p({
-            left: crosshair.x,
-            top: crosshair.y
-          });
-          var text = c.label(pointInDataSpace.x);
-          if (text) {
-            var padding = options.crosshair.padding;
-            ctx.font = options.crosshair.font;
-            ctx.textAlign = "right";
-            ctx.fillStyle = options.crosshair.textColor;
-            ctx.fillText(text, crosshair.x + padding.left, padding.top);
-          }
-        }
-      }
-      ctx.restore();
-    });
+    };
 
-    plot.hooks.shutdown.push(function (plot, eventHolder) {
-      eventHolder.unbind("mouseout", onMouseOut);
-      eventHolder.unbind("mousemove", onMouseMove);
-    });
-  }
+    function init(plot) {
+        // position of crosshair in pixels
+        var crosshair = { x: -1, y: -1, locked: false, showLabel: true };
 
-  $.plot.plugins.push({
-    init: init,
-    options: options,
-    name: 'crosshair',
-    version: '1.0'
-  });
+        plot.setRawCrosshair = function setCrosshairRaw(nextCrosshair) {
+            crosshair = nextCrosshair;
+            plot.triggerRedrawOverlay();
+        };
+
+        plot.setCrosshair = function setCrosshair(pos) {
+            if (!pos)
+                crosshair.x = -1;
+            else {
+                var o = plot.p2c(pos);
+                crosshair.x = Math.max(0, Math.min(o.left, plot.width()));
+                crosshair.y = Math.max(0, Math.min(o.top, plot.height()));
+            }
+
+            plot.triggerRedrawOverlay();
+        };
+
+        plot.clearCrosshair = plot.setCrosshair; // passes null for pos
+
+        plot.lockCrosshair = function lockCrosshair(pos) {
+            if (pos)
+                plot.setCrosshair(pos);
+            crosshair.locked = true;
+        };
+
+        plot.unlockCrosshair = function unlockCrosshair() {
+            crosshair.locked = false;
+        };
+
+        plot.isLockedCrosshair = function isLockedCrosshair() {
+            return crosshair.locked;
+        };
+
+        plot.showLabelCrosshair = function showLabelCrosshair() {
+            crosshair.showLabel = true;
+            plot.triggerRedrawOverlay();
+        };
+
+        plot.hideLabelCrosshair = function hideLabelCrosshair() {
+            crosshair.showLabel = false;
+            plot.triggerRedrawOverlay();
+        };
+
+        function onMouseOut(e) {
+            if (crosshair.locked)
+                return;
+
+            if (crosshair.x != -1) {
+                crosshair.x = -1;
+                plot.triggerRedrawOverlay();
+            }
+            plot.getPlaceholder().trigger("flot.crosshair.setCrosshair", [crosshair]);
+        }
+
+        function onMouseMove(e) {
+            if (crosshair.locked)
+                return;
+
+            if (plot.getSelection && plot.getSelection()) {
+                crosshair.x = -1; // hide the crosshair while selecting
+                return;
+            }
+
+            var offset = plot.offset();
+            crosshair.x = Math.max(0, Math.min(e.pageX - offset.left, plot.width()));
+            crosshair.y = Math.max(0, Math.min(e.pageY - offset.top, plot.height()));
+            // fire an event that the crosshair has been updated
+            plot.getPlaceholder().trigger("flot.crosshair.setCrosshair", [crosshair, plot]);
+            plot.triggerRedrawOverlay();
+        }
+
+        plot.hooks.bindEvents.push(function (plot, eventHolder) {
+            if (!plot.getOptions().crosshair.mode)
+                return;
+
+            eventHolder.mouseout(onMouseOut);
+            eventHolder.mousemove(onMouseMove);
+        });
+
+        plot.hooks.drawOverlay.push(function (plot, ctx) {
+            var options = plot.getOptions();
+            var c = options.crosshair;
+            if (!c.mode)
+                return;
+
+            var plotOffset = plot.getPlotOffset();
+
+            ctx.save();
+            ctx.translate(plotOffset.left, plotOffset.top);
+
+            if (crosshair.x != -1) {
+                var adj = options.crosshair.lineWidth % 2 ? 0.5 : 0;
+                var xOffset = 0;
+                var yOffset = 0;
+
+                ctx.strokeStyle = c.color;
+                ctx.lineWidth = c.lineWidth;
+                ctx.lineJoin = "round";
+
+                ctx.beginPath();
+                if (c.mode.indexOf("x") != -1) {
+                    var drawX = Math.floor(crosshair.x) + adj;
+                    ctx.moveTo(drawX, 0);
+                    ctx.lineTo(drawX, plot.height());
+                    xOffset = crosshair.x;
+                }
+                if (c.mode.indexOf("y") != -1) {
+                    var drawY = Math.floor(crosshair.y) + adj;
+                    ctx.moveTo(0, drawY);
+                    ctx.lineTo(plot.width(), drawY);
+                    xOffset = crosshair.x;
+                    yOffset = crosshair.y;
+                }
+                ctx.stroke();
+                // draw the text
+                if (crosshair.showLabel) {
+                    var pointInDataSpace = plot.c2p({
+                        left: crosshair.x,
+                        top: crosshair.y
+                    });
+                    var text = c.label(pointInDataSpace);
+                    if (text) {
+                        var padding = options.crosshair.padding;
+                        ctx.font = options.crosshair.font;
+                        ctx.fillStyle = options.crosshair.textColor;
+                        var textSize = ctx.measureText(text);
+                        var plotOffset = plot.getPlotOffset();
+                        if (xOffset + padding.left < textSize.width) {
+                                ctx.textAlign = "left";
+                                ctx.fillText(text, xOffset - padding.left, yOffset + padding.top);
+                            } else {
+                                ctx.textAlign = "right";
+                                ctx.fillText(text, xOffset + padding.left, yOffset + padding.top);
+                            }
+                    }
+                }
+            }
+            ctx.restore();
+        });
+
+        plot.hooks.shutdown.push(function (plot, eventHolder) {
+            eventHolder.unbind("mouseout", onMouseOut);
+            eventHolder.unbind("mousemove", onMouseMove);
+        });
+    }
+
+    $.plot.plugins.push({
+        init: init,
+        options: options,
+        name: 'crosshair',
+        version: '1.0'
+    });
 })(jQuery);
