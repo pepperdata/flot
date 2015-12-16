@@ -72,6 +72,7 @@
             lineWidth: 1,
             // label to place next to the crosshair line
             label: function() {return '';},
+            lineDashed: false,
             padding: {
                 top: 10,
                 left: -4
@@ -181,6 +182,9 @@
                 ctx.strokeStyle = c.color;
                 ctx.lineWidth = c.lineWidth;
                 ctx.lineJoin = "round";
+                if (c.lineDashed) {
+                    ctx.setLineDash([ctx.lineWidth * 2]);
+                }
 
                 ctx.beginPath();
                 if (c.mode.indexOf("x") != -1) {
@@ -209,14 +213,27 @@
                         ctx.font = options.crosshair.font;
                         ctx.fillStyle = options.crosshair.textColor;
                         var textSize = ctx.measureText(text);
-                        var plotOffset = plot.getPlotOffset();
+                        var labelX,
+                            labelY;
+
+                        // Flip left/right to prevent text from going off edge of plot
                         if (xOffset + padding.left < textSize.width) {
-                                ctx.textAlign = "left";
-                                ctx.fillText(text, xOffset - padding.left, yOffset + padding.top);
-                            } else {
-                                ctx.textAlign = "right";
-                                ctx.fillText(text, xOffset + padding.left, yOffset + padding.top);
-                            }
+                            ctx.textAlign = "left";
+                            labelX = xOffset - padding.left;
+                        } else {
+                            ctx.textAlign = "right";
+                            labelX = xOffset + padding.left;
+                        }
+                        // Flip up/down to prevent text from going off edge of plot
+                        // measureText doesn't give a height, use 50 to be safe
+                        if (yOffset >= 50 || c.mode.indexOf("y") === -1) {
+                            ctx.textBaseline = "alphabetic";
+                            labelY = yOffset + padding.top;
+                        } else {
+                            ctx.textBaseline = "hanging";
+                            labelY = yOffset - padding.top;
+                        }
+                        ctx.fillText(text, labelX, labelY);
                     }
                 }
             }
